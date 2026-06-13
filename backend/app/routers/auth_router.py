@@ -7,6 +7,8 @@ from app.auth.jwt import create_access_token
 from app.services.user_service import get_user_by_email 
 from app.schemas.user_schema import UserCreate, UserResponse
 from app.services.user_service import create_user
+from app.auth.dependencies import get_current_user
+from app.models.user import User
 
 router = APIRouter()
 
@@ -60,3 +62,7 @@ def signup(
         )
     user = create_user(db,user_data)
     return user
+
+@router.get("/me")
+def get_me(current_user: User = Depends(get_current_user)):
+    return current_user

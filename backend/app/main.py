@@ -9,6 +9,7 @@ from app.models.user import User
 from app.models.comment import Comments
 from app.models.incident import Incident
 from app.models.incident_activity_log import IncidentActivityLogs
+from app.routers.user_router import router as user_router
 app = FastAPI()
 
 origins = [
@@ -31,6 +32,7 @@ app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(incident_router,prefix="/api/incidents",tags=["incidents"])
 app.include_router(comment_router,prefix="/api/incidents",tags=["comments"])
 app.include_router(activity_log_router, prefix="/api/incidents", tags=["activity logs"])
+app.include_router(user_router, prefix="/api/users", tags=["users"])
 print(engine)
 
 @app.get("/")
