@@ -1,0 +1,64 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from app.database.session import get_db
+from app.auth.dependencies import get_current_user
+from app.models.user import User
+from app.schemas.incident_schema import IncidentCreate, IncidentUpdate, IncidentResponse
+from app.services.incident_service import (
+    create_incident, get_incident, get_incidents, 
+    update_incident, delete_incident
+)
+
+router = APIRouter()
+
+# POST /api/incidents
+@router.post("/", response_model=IncidentResponse)
+def create_incident_route(
+    incident_data: IncidentCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return create_incident(db, incident_data, created_by=current_user.id)
+    
+# GET /api/incidents
+@router.get("/")
+def get_incidents_route(
+    db:Session=Depends(get_db),
+    current_user:User=Depends(get_current_user)
+):
+    incidents = get_incidents(db)
+    return incidents
+# GET /api/incidents/{incident_id}
+@router.get("/{incident_id}", response_model=IncidentResponse)
+def get_incident_route(
+    incident_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    incident = get_incident(db, incident_id)
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    return incident
+# PUT /api/incidents/{incident_id}
+@router.put("/{incident_id}")
+def update_incident_route(
+    incident_data : IncidentUpdate,
+    incident_id:int,
+    current_user : User =Depends(get_current_user),
+    db:Session = Depends(get_db)
+):
+    updated = update_incident(db, incident_id, incident_data)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    return updated
+# DELETE /api/incidents/{incident_id}
+@router.delete("/{incident_id}")
+def delete_incident_route(
+    incident_id:int,
+    current_user : User =Depends(get_current_user),
+    db:Session = Depends(get_db)
+):
+    deleted = delete_incident(db, incident_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    return {"message": "Incident deleted"}
