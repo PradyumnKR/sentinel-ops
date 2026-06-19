@@ -23,3 +23,7 @@ def get_activity_logs(db: Session, incident_id: int) -> Sequence[IncidentActivit
     # get all logs where incident_id matches, ordered by created_at
     stmt = select(IncidentActivityLogs).where(IncidentActivityLogs.incident_id == incident_id).order_by(IncidentActivityLogs.created_at)
     return db.execute(stmt).scalars().all()
+
+def get_recent_activity_logs(db:Session)->Sequence[IncidentActivityLogs]:
+    stmt = select(IncidentActivityLogs).order_by(IncidentActivityLogs.created_at.desc()).limit(5)
+    return db.execute(stmt).scalars().all()

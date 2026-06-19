@@ -29,9 +29,9 @@ app.add_middleware(
 )
 
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+app.include_router(activity_log_router, prefix="/api/incidents", tags=["activity logs"])
 app.include_router(incident_router,prefix="/api/incidents",tags=["incidents"])
 app.include_router(comment_router,prefix="/api/incidents",tags=["comments"])
-app.include_router(activity_log_router, prefix="/api/incidents", tags=["activity logs"])
 app.include_router(user_router, prefix="/api/users", tags=["users"])
 print(engine)
 

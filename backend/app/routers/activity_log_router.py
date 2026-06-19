@@ -4,10 +4,14 @@ from app.database.session import get_db
 from app.auth.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.activity_log_schema import ActivityLogResponse
-from app.services.incident_activity_log_service import get_activity_logs
+from app.services.incident_activity_log_service import get_activity_logs,get_recent_activity_logs
 from typing import Sequence
 
 router = APIRouter()
+@router.get("/recent", response_model=list[ActivityLogResponse])
+def get_recent_activity(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    recent_logs = get_recent_activity_logs(db)
+    return recent_logs
 # GET /api/incidents/{incident_id}/activity
 @router.get("/{incident_id}/activity", response_model=list[ActivityLogResponse])
 def get_activity_logs_route(

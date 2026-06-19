@@ -1,10 +1,10 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Shield, LayoutDashboard, AlertTriangle, User as UserIcon, LogOut } from 'lucide-react';
+import { Shield, LayoutDashboard, Asterisk, User as UserIcon, LogOut, Settings } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -13,58 +13,56 @@ export const Sidebar: React.FC = () => {
   };
 
   const navLinks = [
-    { to: '/', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-    { to: '/incidents', icon: <AlertTriangle size={20} />, label: 'Incidents' },
-    { to: '/profile', icon: <UserIcon size={20} />, label: 'Profile' },
+    { to: '/', icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
+    { to: '/incidents', icon: <Asterisk size={18} />, label: 'Incidents' },
+    { to: '/profile', icon: <UserIcon size={18} />, label: 'Profile' },
   ];
 
   return (
     <aside className="w-64 h-screen fixed left-0 top-0 border-r flex flex-col" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}>
       {/* Brand */}
-      <div className="h-16 flex items-center px-6 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
-        <Shield size={24} style={{ color: 'var(--accent-primary)' }} className="mr-3" />
-        <span className="font-bold text-lg tracking-wide" style={{ color: 'var(--text-primary)' }}>SentinelOps</span>
+      <div className="h-20 flex items-center px-6 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+        <div className="w-8 h-8 rounded bg-[rgba(192,193,255,0.1)] border border-[rgba(192,193,255,0.2)] flex items-center justify-center mr-3 shrink-0">
+          <Shield size={18} style={{ color: 'var(--accent-primary)' }} />
+        </div>
+        <div>
+          <h1 className="font-bold text-sm tracking-widest text-white leading-tight">SENTINEL OPS</h1>
+          <p className="text-[10px] tracking-widest text-[var(--text-muted)] font-semibold mt-0.5">COMMAND CENTER</p>
+        </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-6 px-4 space-y-2">
+      <nav className="flex-1 py-6 space-y-1">
         {navLinks.map((link) => (
           <NavLink
             key={link.to}
             to={link.to}
             className={({ isActive }) =>
-              `flex items-center px-4 py-3 rounded-lg transition-colors ${
+              `flex items-center px-6 py-3 transition-colors border-l-2 ${
                 isActive 
-                  ? 'bg-[var(--bg-surface-elevated)] text-[var(--accent-primary)] font-medium' 
-                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)]'
+                  ? 'bg-[var(--bg-surface-hover)] border-[var(--button-primary)] text-white font-medium' 
+                  : 'border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-white'
               }`
             }
           >
-            <span className="mr-3">{link.icon}</span>
-            {link.label}
+            <span className="mr-4 text-[var(--text-muted)]">{link.icon}</span>
+            <span className="text-sm">{link.label}</span>
           </NavLink>
         ))}
       </nav>
 
-      {/* User Info & Logout */}
-      <div className="p-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
-        <div className="flex items-center mb-4 px-2">
-          <div className="w-10 h-10 rounded-full bg-[var(--bg-surface-elevated)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--accent-primary)] font-bold">
-            {user?.name?.charAt(0).toUpperCase() || 'U'}
-          </div>
-          <div className="ml-3 overflow-hidden">
-            <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{user?.name || 'Unknown User'}</p>
-            <p className="text-xs truncate uppercase tracking-wider mt-0.5 font-semibold" style={{ color: user?.role === 'admin' ? 'var(--severity-high)' : 'var(--text-muted)' }}>
-              {user?.role || 'operator'}
-            </p>
-          </div>
-        </div>
+      {/* Settings & Logout */}
+      <div className="pb-6 space-y-1">
+        <button className="w-full flex items-center px-6 py-3 transition-colors border-l-2 border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-white">
+          <Settings size={18} className="mr-4 text-[var(--text-muted)]" />
+          <span className="text-sm">Settings</span>
+        </button>
         <button 
           onClick={handleLogout}
-          className="flex items-center w-full px-4 py-2 text-sm rounded-md transition-colors text-[var(--severity-critical)] hover:bg-[rgba(219,75,75,0.1)]"
+          className="w-full flex items-center px-6 py-3 transition-colors border-l-2 border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-white"
         >
-          <LogOut size={16} className="mr-2" />
-          Sign Out
+          <LogOut size={18} className="mr-4 text-[var(--text-muted)]" />
+          <span className="text-sm">Logout</span>
         </button>
       </div>
     </aside>

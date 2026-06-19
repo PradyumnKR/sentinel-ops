@@ -18,6 +18,8 @@ def create_incident_route(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    if incident_data.assigned_to is not None and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can set assignment")
     return create_incident(db, incident_data, created_by=current_user.id)
     
 # GET /api/incidents
@@ -47,6 +49,10 @@ def update_incident_route(
     current_user : User =Depends(get_current_user),
     db:Session = Depends(get_db)
 ):
+    update_fields = incident_data.model_dump(exclude_unset=True)
+    if "assigned_to" in update_fields and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can change assignment")
+
     updated = update_incident(db, incident_id, incident_data)
     if not updated:
         raise HTTPException(status_code=404, detail="Incident not found")

@@ -13,6 +13,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Profile } from './pages/Profile';
 import { IncidentList } from './pages/IncidentList';
 import { IncidentDetail } from './pages/IncidentDetail';
+import { DeclareIncident } from './pages/DeclareIncident';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
               <Route element={<Layout />}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/incidents" element={<IncidentList />} />
+                <Route path="/incidents/new" element={<DeclareIncident />} />
                 <Route path="/incidents/:id" element={<IncidentDetail />} />
                 <Route path="/profile" element={<Profile />} />
               </Route>

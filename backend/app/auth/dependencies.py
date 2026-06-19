@@ -18,7 +18,10 @@ def get_current_user(
     # 4. fetch user using get_user_by_id(db, int(user_id))
     # 5. if user is None → raise HTTPException 401, "User not found"
     # 6. return user
-    decoded_token = decode_access_token(token)
+    try:
+        decoded_token = decode_access_token(token)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
     user_id = decoded_token.get("sub")
     if not user_id:
         raise HTTPException(
