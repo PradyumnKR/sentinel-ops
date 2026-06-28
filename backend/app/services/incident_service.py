@@ -3,6 +3,7 @@ from sqlalchemy import select
 from app.models.incident import Incident
 from app.schemas.incident_schema import IncidentCreate, IncidentUpdate
 from app.services.incident_activity_log_service import create_activity_log
+from datetime import datetime
 
 def create_incident(db: Session, incident_data: IncidentCreate, created_by: int) -> Incident:
     # create Incident object, set created_by, add, commit, refresh, return
@@ -36,7 +37,17 @@ def update_incident(db: Session, incident_id: int, incident_data: IncidentUpdate
 
     if not incident:
         return None
+
+    if incident.status == "Resolved":
+        raise ValueError("Resolved incidents cannot be edited")
+
     updated_data = incident_data.model_dump(exclude_unset=True)
+
+    if updated_data.get("status") == "Resolved":
+        res_notes = updated_data.get("resolution_notes") or incident.resolution_notes
+        if not res_notes or not res_notes.strip():
+            raise ValueError("Resolution notes are required before resolving")
+        incident.resolved_at = datetime.utcnow()
 
     for field,value in updated_data.items():
         old = str(getattr(incident, field))

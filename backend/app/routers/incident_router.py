@@ -55,7 +55,10 @@ def update_incident_route(
     if "assigned_to" in update_fields and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Only admins can change assignment")
 
-    updated = update_incident(db, incident_id, incident_data)
+    try:
+        updated = update_incident(db, incident_id, incident_data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if not updated:
         raise HTTPException(status_code=404, detail="Incident not found")
     return updated

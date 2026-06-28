@@ -6,7 +6,7 @@ class IncidentCreate(BaseModel):
     title: str
     description: Optional[str] = None
     severity: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[str] = "Open"
     category: Optional[str] = None
     location: Optional[str] = None
     resolution_notes: Optional[str] = None
