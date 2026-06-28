@@ -4,11 +4,18 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import type { Incident, Comment, ActivityLog, User } from '../types';
-import { AlertTriangle, ShieldCheck, Search, Bell, Zap, User as UserIcon, Send, Terminal, Shield, Paperclip } from 'lucide-react';
+import { AlertTriangle, ShieldCheck, Search, Bell, Zap, User as UserIcon, Send, Terminal, Shield, Paperclip, Cpu, FileText } from 'lucide-react';
 
 type TimelineItem = 
   | { type: 'comment'; data: Comment; timestamp: number }
   | { type: 'activity'; data: ActivityLog; timestamp: number };
+
+const aiSeverityMap: Record<string, { bg: string, border: string, text: string }> = {
+  critical: { bg: 'bg-red-500/10', border: 'border-red-500/30', text: 'text-red-400' },
+  high: { bg: 'bg-orange-500/10', border: 'border-orange-500/30', text: 'text-orange-400' },
+  medium: { bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', text: 'text-yellow-400' },
+  low: { bg: 'bg-green-500/10', border: 'border-green-500/30', text: 'text-green-400' }
+};
 
 export const IncidentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -24,6 +31,7 @@ export const IncidentDetail: React.FC = () => {
   // Edit State
   const [newComment, setNewComment] = useState('');
   const [resolutionNotes, setResolutionNotes] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const fetchDetails = useCallback(async () => {
     try {
@@ -100,6 +108,20 @@ export const IncidentDetail: React.FC = () => {
     }
   };
 
+  const handleAnalyze = async () => {
+    setIsAnalyzing(true);
+    try {
+      const res = await api.post(`/incidents/${id}/analyze`);
+      const { ai_summary, ai_severity, ai_recommended_action } = res.data;
+      setIncident(prev => prev ? { ...prev, ai_summary, ai_severity, ai_recommended_action } : prev);
+      addToast('AI Analysis complete', 'success');
+    } catch (err) {
+      addToast('Failed to analyze incident with AI', 'error');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   if (isLoading || !incident) {
     return <div className="flex justify-center mt-20"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[var(--button-primary)]"></div></div>;
   }
@@ -137,15 +159,6 @@ export const IncidentDetail: React.FC = () => {
         <div className="flex items-center gap-3">
           <span className="font-bold text-lg tracking-widest text-white leading-tight">SENTINEL OPS</span>
           <span className="label-mono px-2 py-1 bg-[var(--bg-surface)] border rounded text-[var(--text-muted)]" style={{ borderColor: 'var(--border-subtle)' }}>INC-{incident.id}</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="relative w-64 hidden md:block">
-            <Search size={14} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)]" />
-            <input type="text" placeholder="Search systems..." className="sentinel-input !pl-10 py-1.5 text-sm bg-[var(--input-bg)] rounded-full" />
-          </div>
-          <Bell size={18} className="text-[var(--text-muted)] hover:text-white cursor-pointer" />
-          <Zap size={18} className="text-[var(--text-muted)] hover:text-white cursor-pointer" />
-          <UserIcon size={18} className="text-[var(--text-muted)] hover:text-white cursor-pointer" />
         </div>
       </div>
 
@@ -263,48 +276,148 @@ export const IncidentDetail: React.FC = () => {
         
         {/* AI Sentinel Analysis */}
         <div className="space-y-4">
-          <h3 className="text-lg font-medium text-white flex items-center">
-            <Shield size={20} className="mr-2" style={{ color: 'var(--accent-primary)' }} /> AI Sentinel Analysis
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Summary */}
-            <div className="ai-glass-panel p-5 relative overflow-hidden">
-              <div className="flex justify-between items-start mb-3">
-                <span className="label-caps text-white">SUMMARY</span>
-                <Terminal size={14} className="text-[var(--text-muted)]" />
-              </div>
-              <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-                {incident.ai_summary || incident.description || "Anomalous patterns detected. Origin traced to an external IP cluster showing characteristics of automated disruption."}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold text-white flex items-center">
+                <Shield size={20} className="mr-2 text-[#7C3AED]" /> AI Sentinel Analysis
+              </h3>
+              <p className="text-xs text-[var(--text-muted)]">
+                Automated analysis of the incident using AI-powered insights
               </p>
             </div>
-
-            {/* Risk Assessment */}
-            <div className="ai-glass-panel p-5 relative overflow-hidden border-[var(--status-high)]">
-              <div className="flex justify-between items-start mb-3">
-                <span className="label-caps" style={{ color: 'var(--status-high)' }}>RISK ASSESSMENT</span>
-                <AlertTriangle size={14} style={{ color: 'var(--status-high)' }} />
+            {incident.ai_severity ? (
+              <button 
+                onClick={handleAnalyze} 
+                disabled={isAnalyzing}
+                className="flex items-center text-xs font-mono px-3 py-1.5 rounded border border-[#7C3AED]/40 text-[#a78bfa] hover:text-white hover:bg-[#7C3AED]/10 transition-colors disabled:opacity-50"
+              >
+                {isAnalyzing ? (
+                  <><span className="animate-spin h-3 w-3 mr-2 border-t-2 border-current rounded-full"></span> ANALYZING...</>
+                ) : (
+                  <><Zap size={12} className="mr-1.5" /> RE-ANALYZE</>
+                )}
+              </button>
+            ) : (
+              <button 
+                onClick={handleAnalyze} 
+                disabled={isAnalyzing}
+                className="flex items-center bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-mono uppercase text-xs sm:text-sm px-4 py-2 rounded transition-colors disabled:opacity-50"
+              >
+                {isAnalyzing ? (
+                  <><span className="animate-spin h-4 w-4 mr-2 border-t-2 border-white rounded-full"></span> ANALYZING...</>
+                ) : (
+                  <><Cpu size={16} className="mr-2" /> ANALYZE WITH AI</>
+                )}
+              </button>
+            )}
+          </div>
+          
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Summary */}
+              <div className="lg:col-span-2 ai-glass-panel p-5 relative overflow-hidden border border-[#7C3AED]/20">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-2">
+                    <FileText size={16} className="text-[#a78bfa]" />
+                    <span className="label-caps text-white font-semibold text-xs tracking-wider">SUMMARY</span>
+                  </div>
+                  <Terminal size={14} className="text-[var(--text-muted)]" />
+                </div>
+                <p className="text-sm text-[var(--text-secondary)] leading-relaxed font-sans">
+                  {incident.ai_summary ? incident.ai_summary : "AI Analysis pending. Click 'Analyze with AI' to generate a summary of this incident."}
+                </p>
               </div>
-              <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-                {incident.ai_severity ? `Predicted severity: ${incident.ai_severity}. ` : ''}
-                {isCritical ? "High probability of service degradation. Load spikes correlate with unauthorized query execution. Immediate isolation recommended." : "Low probability of collateral damage. Monitor standard logs."}
-              </p>
+
+              {/* Risk Assessment */}
+              <div className="lg:col-span-1 ai-glass-panel p-5 relative overflow-hidden border border-orange-500/30 flex flex-col justify-between min-h-[180px]">
+                <div className="flex justify-between items-start mb-3">
+                  <span className="label-caps text-orange-400 font-semibold text-xs tracking-wider">RISK ASSESSMENT</span>
+                  <AlertTriangle size={14} className="text-orange-400" />
+                </div>
+                
+                {incident.ai_severity ? (
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div className="flex-1 flex items-center justify-center my-3">
+                      <div className={`w-full py-3.5 rounded border text-center font-bold text-base tracking-wider uppercase ${
+                        aiSeverityMap[incident.ai_severity.toLowerCase()] 
+                          ? `${aiSeverityMap[incident.ai_severity.toLowerCase()].text} ${aiSeverityMap[incident.ai_severity.toLowerCase()].border} bg-black/40`
+                          : 'text-white border-zinc-700 bg-black/40'
+                      }`}>
+                        {incident.ai_severity}
+                      </div>
+                    </div>
+                    
+                    <div className="border-t border-zinc-800/80 pt-3 text-center">
+                      <span className="text-[10px] text-[var(--text-muted)] tracking-wider uppercase font-mono">
+                        Powered by Llama 3.3
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex flex-col justify-between">
+                    <div className="flex-1 flex items-center justify-center my-4 text-center">
+                      <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                        Risk assessment pending. Run analysis to determine severity.
+                      </p>
+                    </div>
+                    <div className="border-t border-zinc-800/80 pt-3 text-center">
+                      <span className="text-[10px] text-[var(--text-muted)] tracking-wider uppercase font-mono">
+                        Powered by Llama 3.3
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Recommended Action */}
-            <div className="ai-glass-panel p-5 relative overflow-hidden border-[var(--accent-secondary)] flex flex-col justify-between">
-              <div>
-                <div className="flex justify-between items-start mb-3">
-                  <span className="label-caps text-white">RECOMMENDED ACTION</span>
-                  <Zap size={14} className="text-[var(--text-muted)]" />
-                </div>
-                <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-4">
-                  {incident.ai_recommended_action || "Execute runbook `RB-ISOLATE-04` to sever external DB connections and rotate credentials."}
-                </p>
+            <div className="ai-glass-panel p-5 relative overflow-hidden border border-zinc-800/80">
+              <div className="flex items-center gap-2 mb-4">
+                <Zap size={16} className="text-[#7C3AED]" />
+                <span className="label-caps text-white font-semibold text-xs tracking-wider">RECOMMENDED ACTIONS</span>
               </div>
-              <button className="sentinel-btn sentinel-btn-primary w-full py-2">
-                <Terminal size={14} className="mr-2" /> EXECUTE RUNBOOK
-              </button>
+              {incident.ai_recommended_action ? (
+                <div className="space-y-3">
+                  {incident.ai_recommended_action.split('\n').filter(line => line.trim() !== '').map((step, idx) => {
+                    const cleanStep = step.replace(/^\d+\.\s*/, '');
+                    let title = cleanStep;
+                    let subtext = '';
+                    
+                    // Check for potential subtext delimiters like colon, semi-colon, or dash
+                    const splitIdx = cleanStep.indexOf(':');
+                    if (splitIdx !== -1) {
+                      title = cleanStep.substring(0, splitIdx).trim();
+                      subtext = cleanStep.substring(splitIdx + 1).trim();
+                    } else {
+                      // Try comma or dash
+                      const commaIdx = cleanStep.indexOf(',');
+                      if (commaIdx !== -1) {
+                        title = cleanStep.substring(0, commaIdx).trim();
+                        subtext = cleanStep.substring(commaIdx + 1).trim();
+                      }
+                    }
+                    
+                    return (
+                      <div key={idx} className="flex items-center gap-4 bg-zinc-950/20 p-4 rounded border border-zinc-800/50 border-l-4 border-l-[#7C3AED] hover:border-l-[#8B5CF6] transition-all">
+                        {/* Number Badge */}
+                        <div className="w-8 h-8 flex items-center justify-center bg-[#7C3AED]/10 border border-[#7C3AED]/20 text-[#a78bfa] rounded font-mono font-bold text-sm shrink-0">
+                          {idx + 1}
+                        </div>
+
+                        {/* Step Text */}
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-white leading-snug">{title}</p>
+                          {subtext && <p className="text-xs text-[var(--text-muted)] mt-1">{subtext}</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+                  Action recommendation pending. Run AI analysis to get suggested runbooks.
+                </p>
+              )}
             </div>
           </div>
         </div>

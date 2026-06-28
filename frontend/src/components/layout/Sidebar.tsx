@@ -51,12 +51,8 @@ export const Sidebar: React.FC = () => {
         ))}
       </nav>
 
-      {/* Settings & Logout */}
+      {/* Logout */}
       <div className="pb-6 space-y-1">
-        <button className="w-full flex items-center px-6 py-3 transition-colors border-l-2 border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-white">
-          <Settings size={18} className="mr-4 text-[var(--text-muted)]" />
-          <span className="text-sm">Settings</span>
-        </button>
         <button 
           onClick={handleLogout}
           className="w-full flex items-center px-6 py-3 transition-colors border-l-2 border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-white"

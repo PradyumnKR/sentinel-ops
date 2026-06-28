@@ -3,7 +3,9 @@ from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.auth.dependencies import get_current_user
 from app.models.user import User
+from app.models.incident import Incident
 from app.schemas.incident_schema import IncidentCreate, IncidentUpdate, IncidentResponse
+from app.services.ai_service import run_triage
 from app.services.incident_service import (
     create_incident, get_incident, get_incidents, 
     update_incident, delete_incident
@@ -68,3 +70,30 @@ def delete_incident_route(
     if not deleted:
         raise HTTPException(status_code=404, detail="Incident not found")
     return {"message": "Incident deleted"}
+
+
+@router.post("/{incident_id}/analyze")
+def analyze_incident(incident_id: int, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    incident = db.query(Incident).filter(Incident.id == incident_id).first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    result = run_triage(
+        title=incident.title,
+        description=incident.description,
+        category=incident.category,
+    )
+
+    incident.ai_severity = result["ai_severity"]
+    incident.ai_summary = result["ai_summary"]
+    incident.ai_recommended_action = result["ai_recommended_action"]
+
+    db.commit()
+    db.refresh(incident)
+
+    return {
+        "incident_id": incident_id,
+        "ai_severity": incident.ai_severity,
+        "ai_summary": incident.ai_summary,
+        "ai_recommended_action": incident.ai_recommended_action,
+    }
