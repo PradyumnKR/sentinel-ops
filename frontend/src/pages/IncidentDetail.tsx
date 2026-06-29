@@ -4,7 +4,7 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import type { Incident, Comment, ActivityLog, User } from '../types';
-import { AlertTriangle, ShieldCheck, Search, Bell, Zap, User as UserIcon, Send, Terminal, Shield, Paperclip, Cpu, FileText } from 'lucide-react';
+import { AlertTriangle, ShieldCheck, Search, Bell, Zap, User as UserIcon, Send, Terminal, Shield, Cpu, FileText } from 'lucide-react';
 
 type TimelineItem = 
   | { type: 'comment'; data: Comment; timestamp: number }
@@ -202,12 +202,22 @@ export const IncidentDetail: React.FC = () => {
         {/* Left Column (Main details) */}
         <div className="lg:col-span-2">
           <div className="flex items-center gap-3 mb-4">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full label-caps bg-black/30 border"
-                  style={{ borderColor: getSeverityColor(incident.severity), color: getSeverityColor(incident.severity) }}>
-              <span className="w-1.5 h-1.5 rounded-full mr-1.5" style={{ backgroundColor: getSeverityColor(incident.severity) }}></span>
-              {incident.severity} SEVERITY
-            </span>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full label-caps bg-black/30 border" 
+            {/* Severity Dropdown */}
+            <div className="relative w-36 shrink-0">
+              <select 
+                className="sentinel-input bg-[var(--input-bg)] appearance-none cursor-pointer !pl-8 py-1.5 text-xs rounded border border-zinc-800 disabled:opacity-75 disabled:cursor-not-allowed"
+                value={incident.severity || 'Low'}
+                onChange={(e) => updateIncident({ severity: e.target.value })}
+                disabled={incident.status === 'Resolved'}
+              >
+                {['Critical', 'High', 'Medium', 'Low'].map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 w-2 h-2 rounded-full pointer-events-none" style={{ backgroundColor: getSeverityColor(incident.severity) }}></div>
+            </div>
+
+            <span className="inline-flex items-center px-2.5 py-1.5 rounded label-caps bg-black/30 border text-xs" 
                   style={{ borderColor: getStatusColor(incident.status), color: getStatusColor(incident.status) }}>
               <span className="w-1.5 h-1.5 rounded-full mr-1.5" style={{ backgroundColor: getStatusColor(incident.status) }}></span>
               {incident.status.toUpperCase()}
@@ -390,6 +400,17 @@ export const IncidentDetail: React.FC = () => {
                         {incident.ai_severity}
                       </div>
                     </div>
+
+                    {incident.severity && incident.ai_severity.toLowerCase() !== incident.severity.toLowerCase() && (
+                      <div className="mb-3 px-1">
+                        <button
+                          onClick={() => updateIncident({ severity: incident.ai_severity })}
+                          className="w-full py-2 px-3 text-xs font-semibold rounded border border-orange-500/40 text-orange-400 bg-orange-500/5 hover:bg-orange-500/10 hover:text-white transition-colors cursor-pointer"
+                        >
+                          Set severity to {incident.ai_severity}
+                        </button>
+                      </div>
+                    )}
                     
                     <div className="border-t border-zinc-800/80 pt-3 text-center">
                       <span className="text-[10px] text-[var(--text-muted)] tracking-wider uppercase font-mono">
@@ -483,7 +504,6 @@ export const IncidentDetail: React.FC = () => {
                 onChange={(e) => setResolutionNotes(e.target.value)}
               />
               <div className="absolute bottom-3 right-3 flex items-center gap-3">
-                <Paperclip size={16} className="text-[var(--text-muted)] cursor-pointer hover:text-white" />
                 <button 
                   className="sentinel-btn sentinel-btn-ghost bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] border-[var(--border-subtle)] text-white text-xs px-3 py-1.5"
                   onClick={() => updateIncident({ resolution_notes: resolutionNotes })}
