@@ -47,19 +47,44 @@ def update_incident(db: Session, incident_id: int, incident_data: IncidentUpdate
         res_notes = updated_data.get("resolution_notes") or incident.resolution_notes
         if not res_notes or not res_notes.strip():
             raise ValueError("Resolution notes are required before resolving")
-        incident.resolved_at = datetime.utcnow()
+        incident.resolved_at = datetime.now()
 
     for field,value in updated_data.items():
         old = str(getattr(incident, field))
         setattr(incident,field,value)
+        
+        log_old = old
+        log_new = str(value)
+        
+        if field == "assigned_to":
+            from app.models.user import User
+            old_name = "-"
+            new_name = "-"
+            if old and old != "None":
+                try:
+                    old_user = db.get(User, int(old))
+                    if old_user:
+                        old_name = old_user.name
+                except ValueError:
+                    pass
+            if value:
+                try:
+                    new_user = db.get(User, int(value))
+                    if new_user:
+                        new_name = new_user.name
+                except ValueError:
+                    pass
+            log_old = old_name
+            log_new = new_name
+
         create_activity_log(
         db,
         incident_id=incident.id,
         performed_by=incident.created_by,
         activity_type="incident_updated",
-        message=f"{field} was updated",
-        old_value=old,
-        new_value=str(value)
+        message=f"{field} changed from '{log_old}' to '{log_new}'",
+        old_value=log_old,
+        new_value=log_new
         )
     db.commit()
     db.refresh(incident)

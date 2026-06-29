@@ -24,6 +24,8 @@ def get_activity_logs(db: Session, incident_id: int) -> Sequence[IncidentActivit
     stmt = select(IncidentActivityLogs).where(IncidentActivityLogs.incident_id == incident_id).order_by(IncidentActivityLogs.created_at)
     return db.execute(stmt).scalars().all()
 
-def get_recent_activity_logs(db:Session)->Sequence[IncidentActivityLogs]:
-    stmt = select(IncidentActivityLogs).order_by(IncidentActivityLogs.created_at.desc()).limit(5)
+def get_recent_activity_logs(db:Session, limit: int = 5)->Sequence[IncidentActivityLogs]:
+    stmt = select(IncidentActivityLogs).order_by(IncidentActivityLogs.created_at.desc())
+    if limit is not None:
+        stmt = stmt.limit(limit)
     return db.execute(stmt).scalars().all()

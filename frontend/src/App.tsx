@@ -14,6 +14,7 @@ import { Profile } from './pages/Profile';
 import { IncidentList } from './pages/IncidentList';
 import { IncidentDetail } from './pages/IncidentDetail';
 import { DeclareIncident } from './pages/DeclareIncident';
+import { SystemEvents } from './pages/SystemEvents';
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
                 <Route path="/incidents/new" element={<DeclareIncident />} />
                 <Route path="/incidents/:id" element={<IncidentDetail />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/events" element={<SystemEvents />} />
               </Route>
             </Route>
 

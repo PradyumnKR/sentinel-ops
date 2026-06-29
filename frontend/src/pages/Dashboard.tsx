@@ -20,6 +20,7 @@ export const Dashboard: React.FC = () => {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     const fetchIncidents = async () => {
@@ -86,14 +87,41 @@ export const Dashboard: React.FC = () => {
       i.severity.toLowerCase() === "high",
   );
   const myIncidents = activeIncidents.filter((i) => i.assigned_to === user?.id);
-  const resolvedToday = incidents.filter((i) => i.status === "Resolved").length; // Mock logic
+  const resolvedToday = incidents.filter((i) => {
+    if (i.status !== "Resolved" || !i.resolved_at) return false;
+    const resolvedDateStr = i.resolved_at.split(/[T ]/)[0];
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+    return resolvedDateStr === todayStr;
+  }).length;
 
-  const recentIncidents = [...incidents]
-    .sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    )
-    .slice(0, 4);
+  const sortedIncidents = [...incidents].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+  const totalItems = sortedIncidents.length;
+  const totalPages = Math.ceil(totalItems / 5) || 1;
+  const paginatedIncidents = sortedIncidents.slice((currentPage - 1) * 5, currentPage * 5);
+
+  const getTableStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "open":
+        return "#9ca3af";
+      case "investigating":
+        return "var(--status-critical)";
+      case "identified":
+        return "var(--status-high)";
+      case "resolving":
+        return "var(--status-medium)";
+      case "resolved":
+        return "var(--status-resolved)";
+      default:
+        return "var(--text-muted)";
+    }
+  };
 
   const getSeverityColor = (sev: string) => {
     switch (sev.toLowerCase()) {
@@ -153,20 +181,19 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Active Incidents */}
         <div className="glass-panel p-5 relative overflow-hidden flex flex-col justify-between">
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-[var(--status-high)]"></div>
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#D97706]"></div>
           <div className="flex justify-between items-start mb-4">
-            <span className="label-caps text-[var(--text-primary)]">
+            <span className="label-caps text-[var(--text-muted)] text-[10px] tracking-wider font-bold">
               ACTIVE INCIDENTS
             </span>
-            <AlertTriangle size={18} style={{ color: "var(--status-high)" }} />
+            <AlertTriangle size={18} className="text-[#F59E0B]" />
           </div>
           <div className="flex items-baseline gap-3">
-            <span className="text-4xl font-semibold">
+            <span className="text-5xl font-bold text-white">
               {activeIncidents.length}
             </span>
             <span
-              className="text-sm font-medium"
-              style={{ color: "var(--status-high)" }}
+              className="text-sm font-semibold text-[#F59E0B]"
             >
               ↑ 12%
             </span>
@@ -175,24 +202,23 @@ export const Dashboard: React.FC = () => {
 
         {/* Critical Severity */}
         <div className="glass-panel p-5 relative overflow-hidden flex flex-col justify-between">
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-[var(--status-critical)]"></div>
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#DC2626]"></div>
           <div className="flex justify-between items-start mb-4">
-            <span className="label-caps text-[var(--text-primary)]">
+            <span className="label-caps text-[var(--text-muted)] text-[10px] tracking-wider font-bold">
               CRITICAL SEVERITY
             </span>
             <AlertCircle
               size={18}
-              style={{ color: "var(--status-critical)" }}
+              className="text-[#EF4444]"
             />
           </div>
           <div className="flex items-baseline gap-3">
             <span
-              className="text-4xl font-semibold"
-              style={{ color: "var(--status-critical)" }}
+              className="text-5xl font-bold text-white"
             >
               {criticalIncidents.length}
             </span>
-            <span className="text-sm text-[var(--text-secondary)]">
+            <span className="text-xs text-[var(--text-muted)]">
               Requires attention
             </span>
           </div>
@@ -200,16 +226,16 @@ export const Dashboard: React.FC = () => {
 
         {/* Assigned To Me */}
         <div className="glass-panel p-5 relative overflow-hidden flex flex-col justify-between">
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-[var(--accent-primary)]"></div>
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#6366F1]"></div>
           <div className="flex justify-between items-start mb-4">
-            <span className="label-caps text-[var(--text-primary)]">
+            <span className="label-caps text-[var(--text-muted)] text-[10px] tracking-wider font-bold">
               ASSIGNED TO ME
             </span>
-            <UserIcon size={18} style={{ color: "var(--text-primary)" }} />
+            <UserIcon size={18} className="text-[#818CF8]" />
           </div>
           <div className="flex items-baseline gap-3">
-            <span className="text-4xl font-semibold">{myIncidents.length}</span>
-            <span className="text-sm text-[var(--text-secondary)]">
+            <span className="text-5xl font-bold text-white">{myIncidents.length}</span>
+            <span className="text-xs text-[var(--text-muted)]">
               {myIncidents.length > 0
                 ? `${myIncidents.length} overdue`
                 : "All clear"}
@@ -219,21 +245,20 @@ export const Dashboard: React.FC = () => {
 
         {/* Resolved Today */}
         <div className="glass-panel p-5 relative overflow-hidden flex flex-col justify-between">
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-[var(--status-resolved)]"></div>
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#059669]"></div>
           <div className="flex justify-between items-start mb-4">
-            <span className="label-caps text-[var(--text-primary)]">
+            <span className="label-caps text-[var(--text-muted)] text-[10px] tracking-wider font-bold">
               RESOLVED TODAY
             </span>
             <CheckCircle
               size={18}
-              style={{ color: "var(--status-resolved)" }}
+              className="text-[#10B981]"
             />
           </div>
           <div className="flex items-baseline gap-3">
-            <span className="text-4xl font-semibold">{resolvedToday}</span>
+            <span className="text-5xl font-bold text-white">{resolvedToday}</span>
             <span
-              className="text-sm font-medium"
-              style={{ color: "var(--status-resolved)" }}
+              className="text-sm font-semibold text-[#10B981]"
             >
               ↑ 5%
             </span>
@@ -242,178 +267,175 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div>
         {/* Recent Incidents Table */}
-        <div className="lg:col-span-2 glass-panel flex flex-col h-full">
-          <div
-            className="px-6 py-5 border-b flex justify-between items-center"
-            style={{ borderColor: "var(--border-subtle)" }}
-          >
-            <h2 className="text-lg font-medium">Recent Incidents</h2>
-            <button
-              className="label-caps hover:text-white transition-colors"
-              style={{ color: "var(--text-secondary)" }}
-              onClick={() => navigate("/incidents")}
+        <div className="glass-panel flex flex-col h-[400px] justify-between overflow-hidden w-full">
+          <div className="flex flex-col flex-1 min-h-0">
+            <div
+              className="px-6 py-5 border-b flex justify-between items-center shrink-0"
+              style={{ borderColor: "var(--border-subtle)" }}
             >
-              VIEW ALL
-            </button>
-          </div>
+              <h2 className="text-lg font-semibold text-white">Recent Incidents</h2>
+              <button
+                className="label-caps hover:text-white transition-colors cursor-pointer text-xs text-[#7C3AED] hover:text-[#8B5CF6] font-bold"
+                onClick={() => navigate("/incidents")}
+              >
+                VIEW ALL
+              </button>
+            </div>
 
-          <div className="flex-1 p-2">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr>
-                  <th
-                    className="px-4 py-3 label-caps"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    ID
-                  </th>
-                  <th
-                    className="px-4 py-3 label-caps"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    Title
-                  </th>
-                  <th
-                    className="px-4 py-3 label-caps"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    Severity
-                  </th>
-                  <th
-                    className="px-4 py-3 label-caps"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    Status
-                  </th>
-                  <th
-                    className="px-4 py-3 label-caps text-right"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    Time
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentIncidents.map((incident) => (
-                  <tr
-                    key={incident.id}
-                    className="cursor-pointer transition-colors hover:bg-(--bg-surface-hover) border-b last:border-0"
-                    style={{ borderColor: "var(--border-subtle)" }}
-                    onClick={() => navigate(`/incidents/${incident.id}`)}
-                  >
-                    <td className="px-4 py-4 label-mono text-(--text-secondary)">
-                      INC-{incident.id}
-                    </td>
-                    <td className="px-4 py-4 font-medium text-sm pr-8">
-                      {incident.title}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span
-                        className="inline-flex items-center px-2 py-1 rounded-full label-caps border bg-black/20"
-                        style={{
-                          borderColor: getSeverityColor(incident.severity),
-                          color: getSeverityColor(incident.severity),
-                        }}
-                      >
-                        <span
-                          className="w-1.5 h-1.5 rounded-full mr-1.5"
-                          style={{
-                            backgroundColor: getSeverityColor(
-                              incident.severity,
-                            ),
-                          }}
-                        ></span>
-                        {incident.severity}
-                      </span>
-                    </td>
-                    <td
-                      className="px-4 py-4 text-sm"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {incident.status || "Open"}
-                    </td>
-                    <td
-                      className="px-4 py-4 label-mono text-right"
+            <div className="p-2 overflow-y-auto flex-1 min-h-0">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr>
+                    <th
+                      className="px-4 py-3 label-caps text-xs"
                       style={{ color: "var(--text-secondary)" }}
                     >
-                      {new Date(incident.created_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </td>
-                  </tr>
-                ))}
-                {recentIncidents.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="text-center py-8 text-(--text-muted) text-sm"
+                      ID
+                    </th>
+                    <th
+                      className="px-4 py-3 label-caps text-xs"
+                      style={{ color: "var(--text-secondary)" }}
                     >
-                      No recent incidents.
-                    </td>
+                      Title
+                    </th>
+                    <th
+                      className="px-4 py-3 label-caps text-xs"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      Severity
+                    </th>
+                    <th
+                      className="px-4 py-3 label-caps text-xs"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      Status
+                    </th>
+                    <th
+                      className="px-4 py-3 label-caps text-right text-xs"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      Time
+                    </th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* System Events Panel */}
-        <div className="glass-panel flex flex-col h-full">
-          <div
-            className="px-6 py-5 border-b flex justify-between items-center"
-            style={{ borderColor: "var(--border-subtle)" }}
-          >
-            <h2 className="text-lg font-medium">System Events</h2>
-            <History size={16} style={{ color: "var(--text-secondary)" }} />
-          </div>
-          <div className="p-6 flex-1 overflow-y-auto">
-            <div
-              className="relative border-l ml-3 pl-6 space-y-8"
-              style={{ borderColor: "var(--border-strong)" }}
-            >
-              {recentActivity.map((event) => {
-                const style = getActivityStyle(event.activity_type);
-                return (
-                  <div className="relative" key={event.id}>
-                    <span
-                      className="absolute -left-7.25 top-1 w-2.5 h-2.5 rounded-full ring-4 ring-(--bg-surface)"
-                      style={{ backgroundColor: style.color }}
-                    ></span>
-                    <div className="flex flex-col">
-                      <span
-                        className="terminal-text"
-                        style={{ color: style.color }}
-                      >
-                        {style.label}
-                      </span>
-                      <span
-                        className="text-sm mt-1"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        {event.message}{" "}
-                        <span style={{ color: "var(--text-muted)" }}>
-                          · INC-{event.incident_id}
+                </thead>
+                <tbody>
+                  {paginatedIncidents.map((incident) => (
+                    <tr
+                      key={incident.id}
+                      className="cursor-pointer transition-colors hover:bg-(--bg-surface-hover) border-b last:border-0"
+                      style={{ borderColor: "var(--border-subtle)" }}
+                      onClick={() => navigate(`/incidents/${incident.id}`)}
+                    >
+                      <td className="px-4 py-4 label-mono text-sm font-semibold text-[#a78bfa]">
+                        INC-{incident.id}
+                      </td>
+                      <td className="px-4 py-4 font-medium text-sm text-white pr-8">
+                        {incident.title}
+                      </td>
+                      <td className="px-4 py-4">
+                        <span
+                          className="inline-flex items-center px-2.5 py-1 rounded border bg-black/20 label-caps text-[10px]"
+                          style={{
+                            borderColor: getSeverityColor(incident.severity),
+                            color: getSeverityColor(incident.severity),
+                          }}
+                        >
+                          <span
+                            className="w-1.5 h-1.5 rounded-full mr-1.5"
+                            style={{
+                              backgroundColor: getSeverityColor(
+                                incident.severity,
+                              ),
+                            }}
+                          ></span>
+                          {incident.severity}
                         </span>
-                      </span>
-                      <span
-                        className="label-caps mt-2"
-                        style={{ color: "var(--text-muted)" }}
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center text-sm font-medium text-white">
+                          <span 
+                            className="w-2 h-2 rounded-full mr-2 shrink-0" 
+                            style={{ 
+                              backgroundColor: getTableStatusColor(incident.status || "Open"),
+                              boxShadow: `0 0 6px ${getTableStatusColor(incident.status || "Open")}` 
+                            }}
+                          ></span>
+                          {incident.status || "Open"}
+                        </div>
+                      </td>
+                      <td
+                        className="px-4 py-4 label-mono text-right text-xs text-[var(--text-secondary)] whitespace-nowrap"
                       >
-                        {event.timeAgoText}
-                      </span>
-                    </div>
-                  </div>
+                        {(() => {
+                          const d = new Date(incident.created_at);
+                          const time = d.toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          });
+                          const day = String(d.getDate()).padStart(2, '0');
+                          const month = String(d.getMonth() + 1).padStart(2, '0');
+                          const year = d.getFullYear();
+                          return `${time} ${day}-${month}-${year}`;
+                        })()}
+                      </td>
+                    </tr>
+                  ))}
+                  {paginatedIncidents.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="text-center py-8 text-(--text-muted) text-sm"
+                      >
+                        No recent incidents.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Frontend Pagination Footer */}
+          <div className="px-6 py-4 border-t border-zinc-800/80 flex items-center justify-between shrink-0">
+            <span className="text-xs text-[var(--text-muted)] font-mono">
+              Showing {totalItems === 0 ? 0 : (currentPage - 1) * 5 + 1} to {Math.min(currentPage * 5, totalItems)} of {totalItems} incidents
+            </span>
+            
+            <div className="flex items-center gap-1">
+              <button 
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="w-8 h-8 rounded border border-zinc-850 hover:border-zinc-700 disabled:opacity-30 disabled:hover:border-zinc-850 flex items-center justify-center text-[var(--text-secondary)] transition-all cursor-pointer disabled:cursor-not-allowed"
+              >
+                &lt;
+              </button>
+              
+              {Array.from({ length: totalPages }).map((_, idx) => {
+                const pageNum = idx + 1;
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-8 h-8 rounded text-xs font-mono font-bold flex items-center justify-center transition-all cursor-pointer ${
+                      currentPage === pageNum 
+                        ? 'bg-[#7C3AED] text-white shadow' 
+                        : 'border border-zinc-850 hover:border-zinc-700 text-[var(--text-secondary)] hover:text-white'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
                 );
               })}
-
-              {recentActivity.length === 0 && (
-                <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                  No recent activity
-                </p>
-              )}
+              
+              <button 
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="w-8 h-8 rounded border border-zinc-850 hover:border-zinc-700 disabled:opacity-30 disabled:hover:border-zinc-850 flex items-center justify-center text-[var(--text-secondary)] transition-all cursor-pointer disabled:cursor-not-allowed"
+              >
+                &gt;
+              </button>
             </div>
           </div>
         </div>

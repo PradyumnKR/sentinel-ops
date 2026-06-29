@@ -14,7 +14,6 @@ export const DeclareIncident: React.FC = () => {
   const [newSeverity, setNewSeverity] = useState('Critical');
   const [newCategory, setNewCategory] = useState('');
   const [newLocation, setNewLocation] = useState('');
-  const [newStatus, setNewStatus] = useState('Investigating');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCreateIncident = async (e: React.FormEvent) => {
@@ -31,8 +30,7 @@ export const DeclareIncident: React.FC = () => {
         description: newDescription,
         severity: newSeverity,
         category: newCategory,
-        location: newLocation || undefined,
-        status: newStatus
+        location: newLocation || undefined
       });
       addToast('Incident declared successfully', 'success');
       navigate(`/incidents/${response.data.id}`);
@@ -108,30 +106,15 @@ export const DeclareIncident: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block label-caps mb-2 text-[var(--text-primary)]">INITIAL STATUS</label>
-              <select 
-                className="sentinel-input bg-[var(--input-bg)] appearance-none cursor-pointer"
-                value={newStatus}
-                onChange={(e) => setNewStatus(e.target.value)}
-              >
-                <option value="Investigating">Investigating</option>
-                <option value="Identified">Identified</option>
-                <option value="Monitoring">Monitoring</option>
-                <option value="Open">Open</option>
-              </select>
-            </div>
-            <div>
-              <label className="block label-caps mb-2 text-[var(--text-primary)]">AFFECTED REGION/SERVICE</label>
-              <input 
-                type="text" 
-                className="sentinel-input bg-[var(--input-bg)]" 
-                value={newLocation} 
-                onChange={(e) => setNewLocation(e.target.value)} 
-                placeholder="e.g. us-east-1, Auth Service"
-              />
-            </div>
+          <div>
+            <label className="block label-caps mb-2 text-[var(--text-primary)]">AFFECTED REGION/SERVICE</label>
+            <input 
+              type="text" 
+              className="sentinel-input bg-[var(--input-bg)]" 
+              value={newLocation} 
+              onChange={(e) => setNewLocation(e.target.value)} 
+              placeholder="e.g. us-east-1, Auth Service"
+            />
           </div>
 
           <div>

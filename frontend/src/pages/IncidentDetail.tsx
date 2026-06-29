@@ -17,6 +17,25 @@ const aiSeverityMap: Record<string, { bg: string, border: string, text: string }
   low: { bg: 'bg-green-500/10', border: 'border-green-500/30', text: 'text-green-400' }
 };
 
+const allowedTransitions: Record<string, string[]> = {
+  Open: ['Open', 'Investigating'],
+  Investigating: ['Investigating', 'Open', 'Identified'],
+  Identified: ['Identified', 'Investigating', 'Resolving'],
+  Resolving: ['Resolving', 'Identified', 'Resolved'],
+  Resolved: []
+};
+
+const getStatusColor = (status: string) => {
+  switch (status?.toLowerCase()) {
+    case 'open': return '#9ca3af';
+    case 'investigating': return 'var(--status-critical)';
+    case 'identified': return 'var(--status-high)';
+    case 'resolving': return 'var(--status-medium)';
+    case 'resolved': return 'var(--status-resolved)';
+    default: return 'var(--text-muted)';
+  }
+};
+
 export const IncidentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -135,18 +154,33 @@ export const IncidentDetail: React.FC = () => {
     }
   };
 
-  const getDuration = (createdAt: string, resolvedAt?: string) => {
-    const start = new Date(createdAt).getTime();
-    const end = resolvedAt ? new Date(resolvedAt).getTime() : new Date().getTime();
-    const diffMins = Math.floor((end - start) / 60000);
+  const getDuration = (createdAt: string, resolvedAt?: string | null) => {
+    const parseUTC = (dateStr: string | null | undefined) => {
+      if (!dateStr) return new Date();
+      const hasTz = dateStr.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(dateStr);
+      return new Date(hasTz ? dateStr : `${dateStr}Z`);
+    };
+
+    const start = parseUTC(createdAt).getTime();
+    const end = resolvedAt ? parseUTC(resolvedAt).getTime() : new Date().getTime();
+    const diffMins = Math.max(0, Math.floor((end - start) / 60000));
     const hours = Math.floor(diffMins / 60);
     const mins = diffMins % 60;
-    const seconds = Math.floor(((end - start) % 60000) / 1000);
+    const seconds = Math.floor((Math.max(0, end - start) % 60000) / 1000);
     return (
       <span style={{ color: 'var(--status-high)' }}>
         {hours.toString().padStart(2, '0')}h {mins.toString().padStart(2, '0')}m {seconds.toString().padStart(2, '0')}s
       </span>
     );
+  };
+
+  const formatTimelineTimestamp = (timestamp: number) => {
+    const d = new Date(timestamp);
+    const time = d.toLocaleTimeString('en-US', { hour12: false });
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${time} ${day}-${month}-${year}`;
   };
 
   const isCritical = incident.severity.toLowerCase() === 'critical';
@@ -173,7 +207,9 @@ export const IncidentDetail: React.FC = () => {
               <span className="w-1.5 h-1.5 rounded-full mr-1.5" style={{ backgroundColor: getSeverityColor(incident.severity) }}></span>
               {incident.severity} SEVERITY
             </span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full label-caps bg-[var(--bg-surface)] border text-[var(--text-secondary)]" style={{ borderColor: 'var(--border-subtle)' }}>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full label-caps bg-black/30 border" 
+                  style={{ borderColor: getStatusColor(incident.status), color: getStatusColor(incident.status) }}>
+              <span className="w-1.5 h-1.5 rounded-full mr-1.5" style={{ backgroundColor: getStatusColor(incident.status) }}></span>
               {incident.status.toUpperCase()}
             </span>
           </div>
@@ -226,18 +262,22 @@ export const IncidentDetail: React.FC = () => {
           <div>
             <label className="block label-caps text-[var(--text-muted)] mb-2">STATUS</label>
             <div className="relative">
-              <select 
-                className="sentinel-input bg-[var(--input-bg)] appearance-none cursor-pointer !pl-8"
-                value={incident.status || 'Open'}
-                onChange={(e) => handleStatusChange(e.target.value)}
-              >
-                <option value="Investigating">Investigating</option>
-                <option value="Identified">Identified</option>
-                <option value="Monitoring">Monitoring</option>
-                <option value="Resolved">Resolved</option>
-                <option value="Closed">Closed</option>
-              </select>
-              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 w-2 h-2 rounded-full" style={{ backgroundColor: incident.status === 'Resolved' ? 'var(--status-resolved)' : 'var(--status-high)' }}></div>
+              {incident.status === 'Resolved' ? (
+                <div className="sentinel-input bg-[var(--input-bg)] flex items-center !pl-8 cursor-not-allowed opacity-75 text-[var(--text-secondary)]">
+                  Resolved
+                </div>
+              ) : (
+                <select 
+                  className="sentinel-input bg-[var(--input-bg)] appearance-none cursor-pointer !pl-8"
+                  value={incident.status || 'Open'}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                >
+                  {(allowedTransitions[incident.status] || ['Open', 'Investigating', 'Identified', 'Resolving', 'Resolved']).map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              )}
+              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 w-2 h-2 rounded-full" style={{ backgroundColor: getStatusColor(incident.status || 'Investigating') }}></div>
             </div>
           </div>
 
@@ -245,10 +285,12 @@ export const IncidentDetail: React.FC = () => {
             <label className="block label-caps text-[var(--text-muted)] mb-2">ASSIGNEE</label>
             <div className="relative">
               <select 
-                className={`sentinel-input bg-[var(--input-bg)] appearance-none cursor-pointer !pl-11 ${user?.role !== 'admin' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`sentinel-input bg-[var(--input-bg)] appearance-none cursor-pointer !pl-11 ${
+                  (user?.role !== 'admin' || incident.status === 'Resolved') ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
                 value={incident.assigned_to || ''}
                 onChange={(e) => updateIncident({ assigned_to: parseInt(e.target.value) || null })}
-                disabled={user?.role !== 'admin'}
+                disabled={user?.role !== 'admin' || incident.status === 'Resolved'}
               >
                 <option value="">Unassigned</option>
                 {users.map(u => (
@@ -261,12 +303,14 @@ export const IncidentDetail: React.FC = () => {
             </div>
           </div>
 
-          <button 
-            className="sentinel-btn sentinel-btn-primary w-full py-4 mt-2"
-            onClick={handleResolve}
-          >
-            <ShieldCheck size={18} className="mr-2" /> DECLARE RESOLVED
-          </button>
+          {incident.status !== 'Resolved' && (
+            <button 
+              className="sentinel-btn sentinel-btn-primary w-full py-4 mt-2"
+              onClick={handleResolve}
+            >
+              <ShieldCheck size={18} className="mr-2" /> DECLARE RESOLVED
+            </button>
+          )}
         </div>
 
       </div>
@@ -425,24 +469,30 @@ export const IncidentDetail: React.FC = () => {
         {/* Resolution Notes */}
         <div>
           <h3 className="label-caps text-[var(--text-muted)] mb-3">RESOLUTION NOTES / DEBRIEF</h3>
-          <div className="relative">
-            <textarea 
-              id="resolutionNotes"
-              className="sentinel-input bg-[var(--input-bg)] min-h-[140px] pb-14"
-              placeholder="Document steps taken, root cause, and preventative measures..."
-              value={resolutionNotes}
-              onChange={(e) => setResolutionNotes(e.target.value)}
-            />
-            <div className="absolute bottom-3 right-3 flex items-center gap-3">
-              <Paperclip size={16} className="text-[var(--text-muted)] cursor-pointer hover:text-white" />
-              <button 
-                className="sentinel-btn sentinel-btn-ghost bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] border-[var(--border-subtle)] text-white text-xs px-3 py-1.5"
-                onClick={() => updateIncident({ resolution_notes: resolutionNotes })}
-              >
-                Save Draft
-              </button>
+          {incident.status === 'Resolved' ? (
+            <div className="p-4 rounded border bg-[var(--input-bg)] border-[var(--border-subtle)] min-h-[140px] text-sm text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">
+              {resolutionNotes || "No resolution notes provided."}
             </div>
-          </div>
+          ) : (
+            <div className="relative">
+              <textarea 
+                id="resolutionNotes"
+                className="sentinel-input bg-[var(--input-bg)] min-h-[140px] pb-14"
+                placeholder="Document steps taken, root cause, and preventative measures..."
+                value={resolutionNotes}
+                onChange={(e) => setResolutionNotes(e.target.value)}
+              />
+              <div className="absolute bottom-3 right-3 flex items-center gap-3">
+                <Paperclip size={16} className="text-[var(--text-muted)] cursor-pointer hover:text-white" />
+                <button 
+                  className="sentinel-btn sentinel-btn-ghost bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-hover)] border-[var(--border-subtle)] text-white text-xs px-3 py-1.5"
+                  onClick={() => updateIncident({ resolution_notes: resolutionNotes })}
+                >
+                  Save Draft
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
       </div>
@@ -463,7 +513,7 @@ export const IncidentDetail: React.FC = () => {
                   <div className="flex-1">
                     <div className="flex justify-between items-center mb-2">
                       <span className="label-caps text-[var(--text-muted)] mr-4">SYSTEM</span>
-                      <span className="label-mono text-[var(--text-muted)] whitespace-nowrap">{new Date(item.timestamp).toLocaleTimeString('en-US', { hour12: false })}</span>
+                      <span className="label-mono text-[var(--text-muted)] whitespace-nowrap">{formatTimelineTimestamp(item.timestamp)}</span>
                     </div>
                     <div className="p-3 bg-[rgba(16,185,129,0.05)] rounded border border-[rgba(16,185,129,0.1)]">
                       <p className="terminal-text text-[var(--status-low)] leading-relaxed">
@@ -486,7 +536,7 @@ export const IncidentDetail: React.FC = () => {
                       <span className="label-caps text-white mr-4 truncate">
                         {item.data.user_id ? (users.find(u => u.id === item.data.user_id)?.name.toUpperCase() || 'UNKNOWN') : 'AI SENTINEL'}
                       </span>
-                      <span className="label-mono text-[var(--text-muted)] whitespace-nowrap">{new Date(item.timestamp).toLocaleTimeString('en-US', { hour12: false })}</span>
+                      <span className="label-mono text-[var(--text-muted)] whitespace-nowrap">{formatTimelineTimestamp(item.timestamp)}</span>
                     </div>
                     <div className="p-4 rounded-lg rounded-tl-none border" style={{ backgroundColor: item.data.user_id ? '#1e1b4b' : 'rgba(223, 209, 255, 0.05)', borderColor: item.data.user_id ? '#312e81' : 'rgba(223, 209, 255, 0.15)' }}>
                       <p className="text-sm text-[var(--text-primary)] whitespace-pre-wrap">{item.data.content}</p>
